@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/gofiber/fiber/v2 v2.52.0
 	github.com/samber/lo v1.39.0
+	github.com/spf13/cast v1.6.0
 	github.com/stretchr/testify v1.8.4
 )
 

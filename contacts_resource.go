@@ -5,14 +5,20 @@ import (
 	"encoding/json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/spf13/cast"
 )
 
 func GetContacts(c *fiber.Ctx) error {
+	headers := c.GetReqHeaders()
+	userIdHeader := headers["user_id"]
+	userId := cast.ToInt(userIdHeader)
+
 	page, err := c.ParamsInt("page", 1)
 	if err != nil {
 		log.Error(err)
 	}
-	users, err := contactsService.GetContactsPage(page, pageSize)
+
+	users, err := contactsService.GetContactsPage(userId, page, pageSize)
 
 	success := true
 	if err != nil {
@@ -26,6 +32,10 @@ func GetContacts(c *fiber.Ctx) error {
 }
 
 func CreateContact(c *fiber.Ctx) error {
+	headers := c.GetReqHeaders()
+	userIdHeader := headers["user_id"]
+	userId := cast.ToInt(userIdHeader)
+
 	body := c.Body()
 	var contact models.Contact
 	err := json.Unmarshal(body, &contact)
@@ -36,7 +46,7 @@ func CreateContact(c *fiber.Ctx) error {
 		})
 	}
 
-	err = contactsService.InsertContact(contact)
+	err = contactsService.InsertContact(userId, contact)
 	success := true
 	if err != nil {
 		success = false
@@ -48,6 +58,10 @@ func CreateContact(c *fiber.Ctx) error {
 }
 
 func Search(c *fiber.Ctx) error {
+	headers := c.GetReqHeaders()
+	userIdHeader := headers["user_id"]
+	userId := cast.ToInt(userIdHeader)
+
 	body := c.Body()
 	var contact models.Contact
 	err := json.Unmarshal(body, &contact)
@@ -58,7 +72,7 @@ func Search(c *fiber.Ctx) error {
 		})
 	}
 
-	users, err := contactsService.Search(contact)
+	users, err := contactsService.Search(userId, contact)
 
 	success := true
 	if err != nil {
@@ -72,6 +86,10 @@ func Search(c *fiber.Ctx) error {
 }
 
 func Edit(c *fiber.Ctx) error {
+	headers := c.GetReqHeaders()
+	userIdHeader := headers["user_id"]
+	userId := cast.ToInt(userIdHeader)
+
 	body := c.Body()
 	var contact models.Contact
 	err := json.Unmarshal(body, &contact)
@@ -82,7 +100,7 @@ func Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	err = contactsService.Edit(contact)
+	err = contactsService.Edit(userId, contact)
 
 	success := true
 	if err != nil {
@@ -95,11 +113,15 @@ func Edit(c *fiber.Ctx) error {
 }
 
 func Delete(c *fiber.Ctx) error {
+	headers := c.GetReqHeaders()
+	userIdHeader := headers["user_id"]
+	userId := cast.ToInt(userIdHeader)
+
 	id, err := c.ParamsInt("id")
 	if err != nil {
 		log.Error(err)
 	}
-	err = contactsService.Delete(id)
+	err = contactsService.Delete(userId, id)
 
 	success := true
 	if err != nil {
