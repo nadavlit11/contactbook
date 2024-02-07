@@ -1,7 +1,7 @@
 package main
 
 import (
-	"boilerplate/models"
+	"contactbook/models"
 	"encoding/json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"

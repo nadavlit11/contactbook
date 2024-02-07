@@ -1,8 +1,8 @@
 package main
 
 import (
-	"boilerplate/dao"
-	"boilerplate/services"
+	"contactbook/dao"
+	"contactbook/services"
 )
 
 var contactsService services.ContactsService

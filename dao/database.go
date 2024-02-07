@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"boilerplate/models"
+	"contactbook/models"
 	"errors"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"

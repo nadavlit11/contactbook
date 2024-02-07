@@ -1,8 +1,8 @@
 package services
 
 import (
-	"boilerplate/dao"
-	"boilerplate/models"
+	"contactbook/dao"
+	"contactbook/models"
 	"github.com/gofiber/fiber/v2/log"
 	"sync"
 )

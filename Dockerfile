@@ -2,7 +2,7 @@
 FROM golang:1.19 AS build
 
 # `boilerplate` should be replaced with your project name
-WORKDIR /go/src/boilerplate
+WORKDIR /go/src/contactbook
 
 # Copy all the Code and stuff to compile everything
 COPY . .
@@ -20,7 +20,7 @@ FROM alpine:latest as release
 WORKDIR /app
 
 # `boilerplate` should be replaced here as well
-COPY --from=build /go/src/boilerplate/app .
+COPY --from=build /go/src/contactbook/app .
 
 # Add packages
 RUN apk -U upgrade \
