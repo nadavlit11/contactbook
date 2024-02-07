@@ -10,46 +10,46 @@ import (
 )
 
 func NewContactsServiceTest(
-	db dao.Database,
+	contactsDao dao.ContactsDao,
 ) ContactsService {
 	return &ContactsServiceImpl{
-		db: db,
+		contactsDao: contactsDao,
 	}
 }
 
 func TestContactsServiceImpl_once(t *testing.T) {
-	databaseMock := new(DatabaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
 
-	_ = NewContactsService(databaseMock)
-	_ = NewContactsService(databaseMock)
+	_ = NewContactsService(contactsDaoMock)
+	_ = NewContactsService(contactsDaoMock)
 }
 
 func TestContactsServiceImpl_GetContactsPage(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
-	databaseMock.On("GetPage", 0, 9).Return([]models.Contact{}, nil)
+	contactsDaoMock.On("GetPage", 1, 0, 9).Return([]models.Contact{}, nil)
 
-	contacts, err := cs.GetContactsPage(1, 10)
+	contacts, err := cs.GetContactsPage(1, 1, 10)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(contacts))
 }
 
 func TestContactsServiceImpl_GetContactsPageError(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
-	databaseMock.On("GetPage", 0, 9).Return([]models.Contact{}, errors.New("error"))
+	contactsDaoMock.On("GetPage", 1, 0, 9).Return([]models.Contact{}, errors.New("error"))
 
-	_, err := cs.GetContactsPage(1, 10)
+	_, err := cs.GetContactsPage(1, 1, 10)
 
 	assert.Error(t, err)
 }
 
 func TestContactsServiceImpl_InsertContact(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
 	contact := models.Contact{
 		FirstName: "John",
@@ -58,16 +58,16 @@ func TestContactsServiceImpl_InsertContact(t *testing.T) {
 		Address:   "123 Main St",
 	}
 
-	databaseMock.On("Insert", contact).Return(nil)
+	contactsDaoMock.On("Insert", 1, contact).Return(nil)
 
-	err := cs.InsertContact(contact)
+	err := cs.InsertContact(1, contact)
 
 	assert.NoError(t, err)
 }
 
 func TestContactsServiceImpl_InsertContactError(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
 	contact := models.Contact{
 		FirstName: "John",
@@ -76,16 +76,16 @@ func TestContactsServiceImpl_InsertContactError(t *testing.T) {
 		Address:   "123 Main St",
 	}
 
-	databaseMock.On("Insert", contact).Return(errors.New("error"))
+	contactsDaoMock.On("Insert", 1, contact).Return(errors.New("error"))
 
-	err := cs.InsertContact(contact)
+	err := cs.InsertContact(1, contact)
 
 	assert.Error(t, err)
 }
 
 func TestContactsServiceImpl_Search(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
 	contact := models.Contact{
 		FirstName: "John",
@@ -94,17 +94,17 @@ func TestContactsServiceImpl_Search(t *testing.T) {
 		Address:   "123 Main St",
 	}
 
-	databaseMock.On("Search", contact).Return([]models.Contact{}, nil)
+	contactsDaoMock.On("Search", 1, contact).Return([]models.Contact{}, nil)
 
-	contacts, err := cs.Search(contact)
+	contacts, err := cs.Search(1, contact)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(contacts))
 }
 
 func TestContactsServiceImpl_SearchError(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
 	contact := models.Contact{
 		FirstName: "John",
@@ -113,16 +113,16 @@ func TestContactsServiceImpl_SearchError(t *testing.T) {
 		Address:   "123 Main St",
 	}
 
-	databaseMock.On("Search", contact).Return([]models.Contact{}, errors.New("error"))
+	contactsDaoMock.On("Search", 1, contact).Return([]models.Contact{}, errors.New("error"))
 
-	_, err := cs.Search(contact)
+	_, err := cs.Search(1, contact)
 
 	assert.Error(t, err)
 }
 
 func TestContactsServiceImpl_Edit(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
 	contact := models.Contact{
 		FirstName: "John",
@@ -131,16 +131,16 @@ func TestContactsServiceImpl_Edit(t *testing.T) {
 		Address:   "123 Main St",
 	}
 
-	databaseMock.On("Edit", contact).Return(nil)
+	contactsDaoMock.On("Edit", 1, contact).Return(nil)
 
-	err := cs.Edit(contact)
+	err := cs.Edit(1, contact)
 
 	assert.NoError(t, err)
 }
 
 func TestContactsServiceImpl_EditError(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
 	contact := models.Contact{
 		FirstName: "John",
@@ -149,64 +149,64 @@ func TestContactsServiceImpl_EditError(t *testing.T) {
 		Address:   "123 Main St",
 	}
 
-	databaseMock.On("Edit", contact).Return(errors.New("error"))
+	contactsDaoMock.On("Edit", 1, contact).Return(errors.New("error"))
 
-	err := cs.Edit(contact)
+	err := cs.Edit(1, contact)
 
 	assert.Error(t, err)
 }
 
 func TestContactsServiceImpl_Delete(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
-	databaseMock.On("Delete", 1).Return(nil)
+	contactsDaoMock.On("Delete", 1, 1).Return(nil)
 
-	err := cs.Delete(1)
+	err := cs.Delete(1, 1)
 
 	assert.NoError(t, err)
 }
 
 func TestContactsServiceImpl_DeleteError(t *testing.T) {
-	databaseMock := new(DatabaseMock)
-	cs := NewContactsServiceTest(databaseMock)
+	contactsDaoMock := new(ContactsDaoMock)
+	cs := NewContactsServiceTest(contactsDaoMock)
 
-	databaseMock.On("Delete", 1).Return(errors.New("error"))
+	contactsDaoMock.On("Delete", 1, 1).Return(errors.New("error"))
 
-	err := cs.Delete(1)
+	err := cs.Delete(1, 1)
 
 	assert.Error(t, err)
 }
 
-type DatabaseMock struct {
+type ContactsDaoMock struct {
 	mock.Mock
 }
 
-func (d *DatabaseMock) Connect() {
+func (d *ContactsDaoMock) Connect() {
 	_ = d.Called()
 }
 
-func (d *DatabaseMock) Insert(contact models.Contact) error {
-	args := d.Called(contact)
+func (d *ContactsDaoMock) Insert(userId int, contact models.Contact) error {
+	args := d.Called(userId, contact)
 	return args.Error(0)
 }
 
-func (d *DatabaseMock) GetPage(offset int, limit int) ([]models.Contact, error) {
-	args := d.Called(offset, limit)
+func (d *ContactsDaoMock) GetPage(userId int, offset int, limit int) ([]models.Contact, error) {
+	args := d.Called(userId, offset, limit)
 	return args.Get(0).([]models.Contact), args.Error(1)
 }
 
-func (d *DatabaseMock) Search(search models.Contact) ([]models.Contact, error) {
-	args := d.Called(search)
+func (d *ContactsDaoMock) Search(userId int, search models.Contact) ([]models.Contact, error) {
+	args := d.Called(userId, search)
 	return args.Get(0).([]models.Contact), args.Error(1)
 }
 
-func (d *DatabaseMock) Edit(contact models.Contact) error {
-	args := d.Called(contact)
+func (d *ContactsDaoMock) Edit(userId int, contact models.Contact) error {
+	args := d.Called(userId, contact)
 	return args.Error(0)
 }
 
-func (d *DatabaseMock) Delete(id int) error {
-	args := d.Called(id)
+func (d *ContactsDaoMock) Delete(userId int, id int) error {
+	args := d.Called(userId, id)
 	return args.Error(0)
 }
