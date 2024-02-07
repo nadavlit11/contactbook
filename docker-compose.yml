@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  app:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: dev
+    volumes:
+      - .:/opt/app/api
+    ports:
+      - "3000:3000"
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
