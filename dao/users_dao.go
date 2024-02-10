@@ -4,7 +4,6 @@ import (
 	"contactbook/database"
 	"contactbook/models"
 	"context"
-	"encoding/json"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/spf13/cast"
 	"sync"
@@ -15,7 +14,6 @@ var usersDao UsersDao
 
 type UsersDao interface {
 	Insert(user models.User) (int, error)
-	CacheContacts(userId int, contacts []models.Contact) error
 }
 
 type UsersDaoImpl struct {
@@ -50,22 +48,4 @@ func (d *UsersDaoImpl) Insert(user models.User) (int, error) {
 		return 0, err
 	}
 	return cast.ToInt(userId), nil
-}
-
-func (d *UsersDaoImpl) CacheContacts(userId int, contacts []models.Contact) error {
-	rConn := d.redisClient.GetConn()
-
-	contactsJson, err := json.Marshal(contacts)
-	if err != nil {
-		log.Error(err.Error())
-		return err
-	}
-
-	err = rConn.Set(context.Background(), cast.ToString(userId), cast.ToString(contactsJson), 0).Err()
-	if err != nil {
-		log.Error(err.Error())
-		return err
-	}
-
-	return nil
 }

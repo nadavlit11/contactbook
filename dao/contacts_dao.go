@@ -3,7 +3,6 @@ package dao
 import (
 	"contactbook/database"
 	"contactbook/models"
-	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"sync"
 )
@@ -14,7 +13,6 @@ var contactsDaoOnce sync.Once
 var contactsDao ContactsDao
 
 type ContactsDao interface {
-	Connect()
 	Insert(userId int, contact models.Contact) error
 	GetContacts(userId int) ([]models.Contact, error)
 	GetPage(userId int, offset int, limit int) ([]models.Contact, error)
@@ -39,11 +37,6 @@ func NewContactsDao(
 		}
 	})
 	return contactsDao
-}
-
-func (d *ContactsDaoImpl) Connect() {
-	d.contactsDb = map[int][]models.Contact{}
-	fmt.Println("Connected with ContactsDao")
 }
 
 func (d *ContactsDaoImpl) Insert(userId int, contact models.Contact) error {

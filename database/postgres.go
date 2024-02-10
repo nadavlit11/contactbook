@@ -27,7 +27,6 @@ func NewPostgresClient() PostgresClient {
 }
 
 func connect() {
-	fmt.Println("Connecting to postgres")
 	connStr := "host=db port=5432 user=admin password=admin dbname=contactbook sslmode=disable"
 	pConn, _ = sql.Open("postgres", connStr)
 

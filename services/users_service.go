@@ -16,18 +16,21 @@ type UsersService interface {
 }
 
 type UsersServiceImpl struct {
-	usersDao        dao.UsersDao
-	contactsService ContactsService
+	usersDao             dao.UsersDao
+	contactsService      ContactsService
+	contactsCacheService ContactsCacheService
 }
 
 func NewUsersService(
 	usersDao dao.UsersDao,
 	contactsService ContactsService,
+	contactsCacheService ContactsCacheService,
 ) UsersService {
 	usersServiceOnce.Do(func() {
 		usersService = &UsersServiceImpl{
-			usersDao:        usersDao,
-			contactsService: contactsService,
+			usersDao:             usersDao,
+			contactsService:      contactsService,
+			contactsCacheService: contactsCacheService,
 		}
 	})
 	return usersService
@@ -53,7 +56,7 @@ func (service *UsersServiceImpl) Login(userId int) error {
 		return err
 	}
 
-	err = service.usersDao.CacheContacts(userId, contacts)
+	err = service.contactsCacheService.CacheContacts(userId, contacts)
 	if err != nil {
 		log.Error(err)
 		return err
