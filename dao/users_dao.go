@@ -1,8 +1,12 @@
 package dao
 
 import (
+	"contactbook/database"
 	"contactbook/models"
-	"fmt"
+	"context"
+	"encoding/json"
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/spf13/cast"
 	"sync"
 )
 
@@ -10,35 +14,58 @@ var usersDaoOnce sync.Once
 var usersDao UsersDao
 
 type UsersDao interface {
-	Connect()
 	Insert(user models.User) (int, error)
+	CacheContacts(userId int, contacts []models.Contact) error
 }
 
 type UsersDaoImpl struct {
-	usersDB   []models.User
-	mu        sync.Mutex
-	autoIncId int
+	postgresClient database.PostgresClient
+	redisClient    database.RedisClient
 }
 
-func NewUsersDao() UsersDao {
+func NewUsersDao(
+	postgresClient database.PostgresClient,
+	redisClient database.RedisClient,
+) UsersDao {
 	usersDaoOnce.Do(func() {
-		usersDao = &UsersDaoImpl{}
+		usersDao = &UsersDaoImpl{
+			postgresClient: postgresClient,
+			redisClient:    redisClient,
+		}
 	})
 	return usersDao
 }
 
-func (d *UsersDaoImpl) Connect() {
-	d.usersDB = make([]models.User, 0)
-	fmt.Println("Connected with UsersDao")
+func (d *UsersDaoImpl) Insert(user models.User) (int, error) {
+	pConn := d.postgresClient.GetConn()
+
+	query := `INSERT INTO users (name) VALUES ($1) RETURNING id`
+
+	row := pConn.QueryRowContext(context.Background(), query, user.Name)
+
+	var userId int
+	err := row.Scan(&userId)
+	if err != nil {
+		log.Error(err.Error())
+		return 0, err
+	}
+	return cast.ToInt(userId), nil
 }
 
-func (d *UsersDaoImpl) Insert(user models.User) (int, error) {
-	d.mu.Lock()
+func (d *UsersDaoImpl) CacheContacts(userId int, contacts []models.Contact) error {
+	rConn := d.redisClient.GetConn()
 
-	d.autoIncId++
-	user.ID = d.autoIncId
-	d.usersDB = append(d.usersDB, user)
+	contactsJson, err := json.Marshal(contacts)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
 
-	d.mu.Unlock()
-	return d.autoIncId, nil
+	err = rConn.Set(context.Background(), cast.ToString(userId), cast.ToString(contactsJson), 0).Err()
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+
+	return nil
 }

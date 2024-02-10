@@ -13,6 +13,7 @@ func InitControllers(port *string) {
 
 	usersApis := app.Group("/users")
 	usersApis.Post("/register/:name", Register)
+	usersApis.Post("/login/:id", Login)
 
 	contactsApis := app.Group("/contacts")
 	contactsApis.Get("/:page", GetContacts)

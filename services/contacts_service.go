@@ -11,7 +11,7 @@ var contactsServiceOnce sync.Once
 var contactsService ContactsService
 
 type ContactsService interface {
-	InitUserContactBook(userId int) error
+	GetContacts(userId int) ([]models.Contact, error)
 	GetContactsPage(userId int, page int, pageSize int) ([]models.Contact, error)
 	InsertContact(userId int, contact models.Contact) error
 	Search(userId int, search models.Contact) ([]models.Contact, error)
@@ -34,6 +34,16 @@ func NewContactsService(
 	return contactsService
 }
 
+func (service *ContactsServiceImpl) GetContacts(userId int) ([]models.Contact, error) {
+	users, err := service.contactsDao.GetContacts(userId)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (service *ContactsServiceImpl) GetContactsPage(userId int, page int, pageSize int) ([]models.Contact, error) {
 	offset := (page - 1) * pageSize
 	limit := pageSize - 1
@@ -45,16 +55,6 @@ func (service *ContactsServiceImpl) GetContactsPage(userId int, page int, pageSi
 	}
 
 	return users, nil
-}
-
-func (service *ContactsServiceImpl) InitUserContactBook(userId int) error {
-	err := service.contactsDao.InitUserContactBook(userId)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
 }
 
 func (service *ContactsServiceImpl) InsertContact(userId int, contact models.Contact) error {

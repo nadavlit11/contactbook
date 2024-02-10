@@ -12,6 +12,7 @@ var usersService UsersService
 
 type UsersService interface {
 	CreateUser(name string) (int, error)
+	Login(userId int) error
 }
 
 type UsersServiceImpl struct {
@@ -42,7 +43,21 @@ func (service *UsersServiceImpl) CreateUser(name string) (int, error) {
 		return 0, err
 	}
 
-	err = service.contactsService.InitUserContactBook(userId)
-
 	return userId, nil
+}
+
+func (service *UsersServiceImpl) Login(userId int) error {
+	contacts, err := service.contactsService.GetContacts(userId)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	err = service.usersDao.CacheContacts(userId, contacts)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }

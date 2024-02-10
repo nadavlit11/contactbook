@@ -1,12 +1,10 @@
 package dao
 
 import (
+	"contactbook/database"
 	"contactbook/models"
-	"errors"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/samber/lo"
-	"strings"
 	"sync"
 )
 
@@ -17,8 +15,8 @@ var contactsDao ContactsDao
 
 type ContactsDao interface {
 	Connect()
-	InitUserContactBook(userId int) error
 	Insert(userId int, contact models.Contact) error
+	GetContacts(userId int) ([]models.Contact, error)
 	GetPage(userId int, offset int, limit int) ([]models.Contact, error)
 	Search(userId int, search models.Contact) ([]models.Contact, error)
 	Edit(userId int, contact models.Contact) error
@@ -26,14 +24,19 @@ type ContactsDao interface {
 }
 
 type ContactsDaoImpl struct {
-	contactsDb map[int][]models.Contact
-	mu         sync.Mutex
-	autoIncId  int
+	contactsDb     map[int][]models.Contact
+	mu             sync.Mutex
+	autoIncId      int
+	postgresClient database.PostgresClient
 }
 
-func NewContactsDao() ContactsDao {
+func NewContactsDao(
+	postgresClient database.PostgresClient,
+) ContactsDao {
 	contactsDaoOnce.Do(func() {
-		contactsDao = &ContactsDaoImpl{}
+		contactsDao = &ContactsDaoImpl{
+			postgresClient: postgresClient,
+		}
 	})
 	return contactsDao
 }
@@ -43,137 +46,135 @@ func (d *ContactsDaoImpl) Connect() {
 	fmt.Println("Connected with ContactsDao")
 }
 
-func (d *ContactsDaoImpl) InitUserContactBook(userId int) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (d *ContactsDaoImpl) Insert(userId int, contact models.Contact) error {
+	pConn := d.postgresClient.GetConn()
+	query := `
+		INSERT INTO contacts
+		(user_id, first_name, last_name, phone, address)
+		VALUES ($1, $2, $3, $4, $5)`
 
-	_, exists := d.contactsDb[userId]
-	if exists {
-		log.Info("user contact book already exists")
-		return nil
+	_, err := pConn.Exec(query, userId, contact.FirstName, contact.LastName, contact.Phone, contact.Address)
+	if err != nil {
+		log.Error(err.Error())
+		return err
 	}
-	if !exists {
-		d.contactsDb[userId] = []models.Contact{}
-	}
+
 	return nil
 }
 
-func (d *ContactsDaoImpl) Insert(userId int, contact models.Contact) error {
-	d.mu.Lock()
+func (d *ContactsDaoImpl) GetContacts(userId int) ([]models.Contact, error) {
+	pConn := d.postgresClient.GetConn()
+	query := `
+		SELECT * FROM contacts
+		WHERE user_id = $1`
 
-	userBook, ok := d.contactsDb[userId]
-	if !ok {
-		log.Error("user not found")
-		return errors.New("user not found")
+	rows, err := pConn.Query(query, userId)
+	defer rows.Close()
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
 	}
 
-	d.autoIncId++
-	contact.ID = d.autoIncId
-	userBook = append(userBook, contact)
-	d.contactsDb[userId] = userBook
+	var contacts []models.Contact
+	for rows.Next() {
+		var contact models.Contact
+		err = rows.Scan(&contact.ID, &contact.UserId, &contact.FirstName, &contact.LastName, &contact.Phone, &contact.Address)
+		if err != nil {
+			log.Error(err.Error())
+			return nil, err
+		}
+		contacts = append(contacts, contact)
+	}
 
-	d.mu.Unlock()
-	return nil
+	return contacts, nil
 }
 
 func (d *ContactsDaoImpl) GetPage(userId int, offset int, limit int) ([]models.Contact, error) {
-	userBook, ok := d.contactsDb[userId]
-	if !ok {
-		log.Error("user not found")
-		return nil, errors.New("user not found")
+	pConn := d.postgresClient.GetConn()
+	query := `
+		SELECT * FROM contacts
+		WHERE user_id = $1
+		OFFSET $2 LIMIT $3`
+
+	rows, err := pConn.Query(query, userId, offset, limit)
+	defer rows.Close()
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
 	}
 
-	if len(userBook) == 0 {
-		return nil, nil
+	var contacts []models.Contact
+	err = rows.Scan(&contacts)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
 	}
 
-	if offset > len(userBook) {
-		return nil, fmt.Errorf("offset + limit is greater than the length of the contactsDao")
-	}
-
-	offsetLimit := offset + limit
-	if offsetLimit > len(userBook) {
-		offsetLimit = len(userBook)
-	}
-	return userBook[offset:offsetLimit], nil
+	return contacts, nil
 }
 
 func (d *ContactsDaoImpl) Search(userId int, search models.Contact) ([]models.Contact, error) {
-	userBook, ok := d.contactsDb[userId]
-	if !ok {
-		log.Error("user not found")
-		return nil, errors.New("user not found")
+	pConn := d.postgresClient.GetConn()
+	query := `
+		SELECT * FROM contacts
+		WHERE user_id = $1`
+	if search.FirstName != "" {
+		query += ` AND first_name = $2`
+	}
+	if search.LastName != "" {
+		query += ` AND last_name = $3`
+	}
+	if search.Phone != "" {
+		query += ` AND phone = $4`
+	}
+	if search.Address != "" {
+		query += ` AND address = $5`
 	}
 
-	filteredContacts := userBook
-
-	if len(search.FirstName) > 0 {
-		filteredContacts = lo.Filter(filteredContacts, func(item models.Contact, _ int) bool {
-			return strings.EqualFold(item.FirstName, search.FirstName)
-		})
+	rows, err := pConn.Query(query, userId)
+	defer rows.Close()
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
 	}
 
-	if len(search.LastName) > 0 {
-		filteredContacts = lo.Filter(filteredContacts, func(item models.Contact, _ int) bool {
-			return strings.EqualFold(item.LastName, search.LastName)
-		})
+	var contacts []models.Contact
+	err = rows.Scan(&contacts)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
 	}
 
-	if len(search.Phone) > 0 {
-		filteredContacts = lo.Filter(filteredContacts, func(item models.Contact, _ int) bool {
-			return strings.EqualFold(item.Phone, search.Phone)
-		})
-	}
-
-	if len(search.Address) > 0 {
-		filteredContacts = lo.Filter(filteredContacts, func(item models.Contact, _ int) bool {
-			return strings.EqualFold(item.Address, search.Address)
-		})
-	}
-
-	return filteredContacts, nil
+	return contacts, nil
 }
 
 func (d *ContactsDaoImpl) Edit(userId int, contact models.Contact) error {
-	userBook, ok := d.contactsDb[userId]
-	if !ok {
-		log.Error("user not found")
-		return errors.New("user not found")
+	pConn := d.postgresClient.GetConn()
+	query := `
+		UPDATE contacts
+		SET first_name = $3, last_name = $4, phone = $5, address = $6
+		WHERE  user_id = $1 AND id = $2`
+
+	_, err := pConn.Exec(query, userId, contact.ID, contact.FirstName, contact.LastName, contact.Phone, contact.Address)
+	if err != nil {
+		log.Error(err.Error())
+		return err
 	}
-
-	_, i, found := lo.FindIndexOf(userBook, func(item models.Contact) bool {
-		return item.ID == contact.ID
-	})
-
-	if !found {
-		log.Error("contact not found")
-		return errors.New("contact not found")
-	}
-
-	userBook[i] = contact
-	d.contactsDb[userId] = userBook
 
 	return nil
 }
 
 func (d *ContactsDaoImpl) Delete(userId int, id int) error {
-	userBook, ok := d.contactsDb[userId]
-	if !ok {
-		log.Error("user not found")
-		return errors.New("user not found")
+	pConn := d.postgresClient.GetConn()
+	query := `
+		DELETE FROM contacts
+		WHERE user_id = $1 AND id = $2`
+
+	_, err := pConn.Exec(query, userId, id)
+	if err != nil {
+		log.Error(err.Error())
+		return err
 	}
-
-	_, i, found := lo.FindIndexOf(userBook, func(item models.Contact) bool {
-		return item.ID == id
-	})
-
-	if !found {
-		log.Error("contact not found")
-		return errors.New("contact not found")
-	}
-
-	userBook = append(userBook[:i], userBook[i+1:]...)
-	d.contactsDb[userId] = userBook
 
 	return nil
 }
